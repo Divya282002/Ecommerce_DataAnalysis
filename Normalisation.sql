@@ -1,7 +1,14 @@
+--------------------------------------------------
+-- DROP TABLES
+--------------------------------------------------
 DROP TABLE IF EXISTS invoice_items;
 DROP TABLE IF EXISTS invoices;
 DROP TABLE IF EXISTS products;
 DROP TABLE IF EXISTS customers;
+
+--------------------------------------------------
+-- CREATE TABLES
+--------------------------------------------------
 
 CREATE TABLE customers (
     CustomerID INT,
@@ -10,9 +17,8 @@ CREATE TABLE customers (
 );
 
 CREATE TABLE products (
-    StockCode VARCHAR(20),
-    Description TEXT,
-    PRIMARY KEY (StockCode)
+    StockCode VARCHAR(20) PRIMARY KEY,
+    Description TEXT
 );
 
 CREATE TABLE invoices (
@@ -34,4 +40,45 @@ CREATE TABLE invoice_items (
     FOREIGN KEY (StockCode) REFERENCES products(StockCode)
 );
 
-select * from ecommerce;
+--------------------------------------------------
+-- INSERT DATA (SAFE VERSION)
+--------------------------------------------------
+
+-- Customers (one per CustomerID + Country)
+INSERT INTO customers
+SELECT CustomerID, Country
+FROM ecommerce
+WHERE CustomerID IS NOT NULL
+GROUP BY CustomerID, Country;
+
+-- Products (one per StockCode)
+INSERT INTO products (StockCode, Description)
+SELECT StockCode, MIN(Description)
+FROM ecommerce
+GROUP BY StockCode;
+
+-- Invoices (one per Invoice)
+INSERT INTO invoices (Invoice, InvoiceDate, CustomerID, Country)
+SELECT 
+    Invoice,
+    MIN(InvoiceDate),
+    MIN(CustomerID),
+    MIN(Country)
+FROM ecommerce
+WHERE CustomerID IS NOT NULL
+GROUP BY Invoice;
+
+-- Invoice Items (one per Invoice + StockCode)
+INSERT INTO invoice_items (Invoice, StockCode, Quantity, Price)
+SELECT 
+    Invoice,
+    StockCode,
+    SUM(Quantity) AS Quantity,
+    MIN(Price) AS Price
+FROM ecommerce
+WHERE CustomerID IS NOT NULL
+GROUP BY Invoice, StockCode;
+
+
+
+
